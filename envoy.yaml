@@ -1,0 +1,32 @@
+node:
+  cluster: test-cluster
+  id: test-id
+
+dynamic_resources:
+  cds_config:
+    api_config_source:
+      api_type: REST
+      transport_api_version: V3
+      cluster_names: [controlplane]
+      refresh_delay: 5s
+      
+
+static_resources:
+  clusters:
+  - type: STATIC
+    name: controlplane
+    load_assignment:
+      cluster_name: controlplane
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1  
+                port_value: 8050
+
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9000
