@@ -9,19 +9,24 @@ def cluster(name:str, addr: str, port: int):
         "@type": "types.googleapis.com/envoy.config.cluster.v3.Cluster", 
         "name": name, 
         "type": "STATIC",
+        "connection_timeout": "5s",
         "load_assignment": {
             "cluster_name": name,
             "endpoints": [
-                {"lb_endpoints": [
-                    {"endpoint": {
-                        "address": {
-                            "socket_address": {
-                                "address": addr,
-                                "port_value": port,
+                {
+                    "lb_endpoints": [
+                        {
+                            "endpoint": {
+                                "address": {
+                                    "socket_address": {
+                                        "address": addr,
+                                        "port_value": port,
+                                    }
+                                }
                             }
                         }
-                    }}
-                ]}
+                    ]
+                }
             ]
         }
     }
@@ -34,12 +39,7 @@ CLUSTERS = [
 LISTENER = {
     "@type": "type.googleapis.com/envoy.config.listener.v3.Listener",
     "name": "example",
-    "address": {
-        "socket_address":{
-            "address": "127.0.0.1",
-            "port_value":8080
-        }
-    },
+    "address": {"socket_address":{"address": "0.0.0.0","port_value":8082}},
     "filter_chains": [
         {
             "filters": [        # [FILTER] robust to downstream (clients) data but not upstream (you)
@@ -48,17 +48,35 @@ LISTENER = {
                     "typed_config": {       
                         "@type": "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager",
                         "stat_prefix": "backends",
+                        "http_filters": [
+                            {
+                                "name": "routing", 
+                                "typed_config": {
+                                    "@type": "type.googleapis.com/envoy.extensions.filters.http.router.v3.Router"
+                                }
+                            }
+                        ],
                         "route_config": {
                             "name": "routes",
                             "virtual_hosts": [
                                 {
                                     "name": "example vh",
-                                    "domains": ['*'],
+                                    "domains": ["*"],
                                     "routes": [
+                                        {
+                                            "name": "static",
+                                            "match": {"prefix": "/static"},
+                                            "direct_response": {
+                                                "body": {
+                                                    "inline_string": "static response"
+                                                },
+                                                "status": 200,
+                                            },
+                                        },
                                         {
                                             "name": "catchall",
                                             "match": {"prefix": "/"},
-                                            "route": {"clusters": "example"}
+                                            "route": {"cluster": "example"}
                                         }
                                     ]
                                 }
@@ -74,7 +92,7 @@ LISTENER = {
 
 
 @app.get("/greeting")
-def greet(name: str):
+def greet(name: str = "World"):
     return f"Hello, {name}! "
 
 

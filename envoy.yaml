@@ -9,6 +9,12 @@ dynamic_resources:
       transport_api_version: V3
       cluster_names: [controlplane]
       refresh_delay: 5s
+  lds_config:
+    api_config_source:
+      api_type: REST
+      transport_api_version: V3
+      cluster_names: [controlplane]
+      refresh_delay: 5s
       
 
 static_resources:
