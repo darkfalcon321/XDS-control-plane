@@ -1,0 +1,24 @@
+[
+    {
+        "type": "listener",
+        "port": 8082,
+        "name": "http",
+        "route_config": "backends"
+    },
+    {
+        "type": "service",
+        "name": "example",
+        "backend": {
+            "addr": "127.0.0.1",
+            "port": 8050
+        },
+        "routes": [
+            {
+                "match": {"prefix": "/"}
+            }
+        ],
+        "domains": [
+            "baz.bar.tld"
+        ]
+    }
+]
