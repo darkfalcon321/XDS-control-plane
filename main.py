@@ -12,7 +12,7 @@ VERSION = 0
 
 def cluster(name:str, addr: str, port: int):
     return {
-        "@type": "types.googleapis.com/envoy.config.cluster.v3.Cluster", 
+        "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster", 
         "name": name, 
         "type": "STATIC",
         "connection_timeout": "5s",
@@ -38,9 +38,6 @@ def cluster(name:str, addr: str, port: int):
     }
 
 
-CLUSTERS = [
-    cluster("example", "127.0.0.1", 8050)
-]
 
 def clusters(services):
     ret = []
@@ -133,7 +130,8 @@ def fetch_loop():
                 DATA = new_data
                 VERSION += 1
                 print(f"New data detected, version:{VERSION}")
-        except Exception:
+        except Exception as e:
+            print(f"fetch_loop error: {e}")
             continue
         time.sleep(3)
 

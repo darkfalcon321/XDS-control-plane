@@ -1,9 +1,13 @@
 # XDS-control-plane
 
 ### Creation Logs
-Created a mock control plane exposing a REST endpoint. It receives envoy's discovery req and returns cluster resource definitions. 
+- Created a mock control plane exposing a REST endpoint `/v3/discovery:{resource_type}` that receives Envoy's discovery requests and returns cluster, listener, and route resource definitions based on the requested type.
 
-A cluster definition cluster() that would be served by the control plane
+- The Envoy bootstrap structure is defined in `envoy.yaml`, with cds_config and lds_config instructing Envoy to dynamically fetch clusters and listeners from the control plane via REST.
 
-A listener at 8080 for client to connect to along with a http connection manager as the filter. 
+- cluster() — builds a cluster definition served by the control plane for a given backend
+- listener() — defines a listener (port 8082) with an HTTP Connection Manager filter to accept client traffic
 
+- Added rds (Route Discovery Service) to the listener config, so routing changes don't require the listener itself to be reloaded/drained
+
+- Added versioning — a background thread polls data.json, and increments a version counter only when the data actually changes. The control plane compares Envoy's submitted version against its own: returns 304 (Not Modified) if unchanged, 200 with the new resources and version if changed, and 400 if an unsupported resource type is requested
