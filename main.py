@@ -1,9 +1,14 @@
 import json
 import uvicorn
+import  threading
+import time
 
+from pathlib import Path
 from fastapi import FastAPI, Request, Response, Header
 
 app = FastAPI()
+DATA = {}
+VERSION = 0
 
 def cluster(name:str, addr: str, port: int):
     return {
@@ -116,10 +121,25 @@ def listener(name: str, port: int, route_config_name: str, controlplane: str):
     }
 
 
+def fetch_loop():
+    global DATA
+    global VERSION
+    while True:
+        try:
+            new_data = fetch_external_data()
+            if new_data == DATA:
+                continue
+            else:
+                DATA = new_data
+                VERSION += 1
+                print(f"New data detected, version:{VERSION}")
+        except Exception:
+            continue
+        time.sleep(3)
+
+
 def fetch_external_data():
-    with open("data.json") as f:
-        data = json.load(f)
-        return data
+    return json.loads(Path("data.json").read_text())
 
 
 @app.get("/greeting")
@@ -129,28 +149,31 @@ def greet(name: str = "World"):
 
 @app.post("/v3/discovery:{resource_type}")
 async def resouces(request: Request, resource_type: str, host = Header()):
-    fake_api_data = fetch_external_data()
+    request_json = await request.json()
+    client_version = request_json.get("version_info", "unset")
 
-    cluster_resources = clusters(fake_api_data)
-    route_config_resource = route_config(fake_api_data)
-    listener_resources = [
-        listener(resource["name"], resource["port"], resource["route_config"], host)
-        for resource in fake_api_data
-        if resource["type"] == "listener"
-    ]
+    resource_mapping = {
+        "clusters": clusters(DATA),
+        "routes": route_config(DATA),
+        "listeners": [
+            listener(resource["name"], resource["port"], resource["route_config"], host)
+            for resource in DATA
+            if resource["type"] == "listener"
+        ],
+    }
 
-
-    if resource_type == "clusters":
-        return {"version_info": "0", "resources": cluster_resources}
-    elif resource_type == "listeners":
-        return {"version_info": "0", "resources": listener_resources}
-    elif resource_type == "routes":
-        return {"version_info": "0", "resources": route_config_resource}
-    else:
+    try:
+        resources = resource_mapping[resource_type]
+    except KeyError:
         return Response(
             "Unsupported resource type", media_type="text/plain", status_code=400
         )
+    
+    if str(VERSION) == client_version:
+        return Response("", status_code=304)
+    return {"version_info": str(VERSION), "resources": resources}
 
 
 if __name__ == "__main__":
+    fetcher = threading.Thread(target=fetch_loop).start()
     uvicorn.run(app, port=8050)

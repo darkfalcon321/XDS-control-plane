@@ -18,6 +18,7 @@
             }
         ],
         "domains": [
+            "foo.bar.tld",
             "baz.bar.tld"
         ]
     }
