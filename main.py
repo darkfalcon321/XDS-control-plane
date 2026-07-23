@@ -148,7 +148,7 @@ def greet(name: str = "World"):
 
 
 @app.post("/v3/discovery:{resource_type}")
-async def resouces(request: Request, resource_type: str, host = Header()):
+async def resources(request: Request, resource_type: str, host = Header()):
     request_json = await request.json()
     client_version = request_json.get("version_info", "unset")
 
