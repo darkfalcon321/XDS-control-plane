@@ -1,5 +1,12 @@
 # XDS-control-plane
 
+## How to start
+Have 2 terminals, one is the envoy sending request and the other is the control plane receiving and replying. 
+
+For the envoy, run the `make run-envoy` command. In the docker container, change directory to /host. Start the envoy with `envoy -c envoy.yaml` command.
+
+For the control plane, simply run the command `make run-controlplane` or `uv run python main.py`
+
 ### Creation Logs
 - Created a mock control plane exposing a REST endpoint `/v3/discovery:{resource_type}` that receives Envoy's discovery requests and returns cluster, listener, and route resource definitions based on the requested type.
 
