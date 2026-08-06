@@ -38,7 +38,6 @@ def cluster(name:str, addr: str, port: int):
     }
 
 
-
 def clusters(services):
     ret = []
     for service in services:
@@ -49,7 +48,6 @@ def clusters(services):
             cluster(service["name"] + "-cluster", backend["addr"], backend["port"])
         )
     return ret
-
 
 
 def route_config(services):
@@ -118,7 +116,7 @@ def listener(name: str, port: int, route_config_name: str, controlplane: str):
     }
 
 
-def fetch_loop():
+def fetch_loop():   # Data File Version Control 
     global DATA
     global VERSION
     while True:
@@ -136,12 +134,12 @@ def fetch_loop():
         time.sleep(3)
 
 
-def fetch_external_data():
+def fetch_external_data():      # Current Data that Envoy deals with in JSON format
     return json.loads(Path("data.json").read_text())
 
 
-@app.get("/greeting")
-def greet(name: str = "World"):
+@app.get("/greeting")           # For testing the connection (else, useless!)
+def greet(name: str = "World") -> str:
     return f"Hello, {name}! "
 
 
