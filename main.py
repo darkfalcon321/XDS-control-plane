@@ -15,7 +15,6 @@ def cluster(name:str, addr: str, port: int):
         "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster", 
         "name": name, 
         "type": "EDS",
-        "connection_timeout": "5s",
         "eds_cluster_config": {
             "eds_config": {
                 "api_config_source": {
