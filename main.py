@@ -14,27 +14,41 @@ def cluster(name:str, addr: str, port: int):
     return {
         "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster", 
         "name": name, 
-        "type": "STATIC",
+        "type": "EDS",
         "connection_timeout": "5s",
-        "load_assignment": {
-            "cluster_name": name,
-            "endpoints": [
-                {
-                    "lb_endpoints": [
-                        {
-                            "endpoint": {
-                                "address": {
-                                    "socket_address": {
-                                        "address": addr,
-                                        "port_value": port,
-                                    }
+        "eds_cluster_config": {
+            "eds_config": {
+                "api_config_source": {
+                    "api_type": "REST",
+                    "transport_api_version": "V3",
+                    "cluster_names": ["controlplane"],
+                    "refresh_delay": "5s"
+                }
+            }
+        }
+    }
+
+
+def endpoint(name:str, addr: str, port: int):
+    return {
+        "@type": "type.googleapis.com/envoy.config.endpoint.v3.ClusterLoadAssignment", 
+        "cluster_name": name, 
+        "endpoints": [
+            {
+                "lb_endpoints": [
+                    {
+                        "endpoint": {
+                            "address": {
+                                "socket_address": {
+                                    "address": addr,
+                                    "port_value": port,
                                 }
                             }
                         }
-                    ]
-                }
-            ]
-        }
+                    }
+                ]
+            }
+        ]
     }
 
 
@@ -45,7 +59,19 @@ def clusters(services):
             continue
         backend = service["backend"]
         ret.append(
-            cluster(service["name"] + "-cluster", backend["addr"], backend["port"])
+            cluster(service["name"] + "-cluster", backend["addr"], backend["port"]) #CHANGE THIS!!
+        )
+    return ret
+
+
+def endpoints(services):
+    ret = []
+    for service in services:
+        if service["type"] != "service":
+            continue
+        backend = service["backend"]
+        ret.append(
+            endpoint(service["name"] + "-cluster", backend["addr"], backend["port"])
         )
     return ret
 
@@ -71,11 +97,14 @@ def route_config(services):
                 "routes": routes,
             }
         )
-    return {
+    return [
+        {
         "@type": "type.googleapis.com/envoy.config.route.v3.RouteConfiguration",
         "name": "backends",
         "virtual_hosts": virtual_hosts
-    }
+        }
+    ]
+
 
 def listener(name: str, port: int, route_config_name: str, controlplane: str):
     return {
@@ -156,6 +185,7 @@ async def resources(request: Request, resource_type: str, host = Header()):
             for resource in DATA
             if resource["type"] == "listener"
         ],
+        "endpoints": endpoints(DATA)
     }
 
     try:
