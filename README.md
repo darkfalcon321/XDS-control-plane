@@ -18,3 +18,6 @@ For the control plane, simply run the command `make run-controlplane` or `uv run
 - Added rds (Route Discovery Service) to the listener config, so routing changes don't require the listener itself to be reloaded/drained
 
 - Added versioning — a background thread polls data.json, and increments a version counter only when the data actually changes. The control plane compares Envoy's submitted version against its own: returns 304 (Not Modified) if unchanged, 200 with the new resources and version if changed, and 400 if an unsupported resource type is requested
+
+- Added EDS — routes the traffic to the clusters properly.
+
