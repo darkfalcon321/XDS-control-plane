@@ -1,7 +1,7 @@
 # XDS-control-plane
 
 ## How to start
-Have 2 terminals, one is the envoy sending request and the other is the control plane receiving and replying. 
+Have 2 terminals, one is the envoy sending request from the docker container and the other is the control plane receiving and replying based on instructions in `data.json`. 
 
 For the envoy, run the `make run-envoy` command. In the docker container, change directory to /host. Start the envoy with `envoy -c envoy.yaml` command.
 
@@ -20,4 +20,5 @@ For the control plane, simply run the command `make run-controlplane` or `uv run
 - Added versioning — a background thread polls data.json, and increments a version counter only when the data actually changes. The control plane compares Envoy's submitted version against its own: returns 304 (Not Modified) if unchanged, 200 with the new resources and version if changed, and 400 if an unsupported resource type is requested
 
 - Added EDS — routes the traffic to the clusters properly.
+
 
