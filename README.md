@@ -40,3 +40,6 @@ debugging is far easier compared to gRPC. Special Binary tooling (grpcurl) is ne
 - Moved the controlplane and envoy to README
 
 - Added extra LDS logs for envoy to see access logs
+- Added EDS — routes the traffic to the clusters properly.
+
+
