@@ -2,6 +2,7 @@ import json
 import uvicorn
 import  threading
 import time
+import socket
 
 from pathlib import Path
 from fastapi import FastAPI, Request, Response, Header
@@ -10,7 +11,7 @@ app = FastAPI()
 DATA = {}
 VERSION = 0
 
-def cluster(name:str, addr: str, port: int):
+def cluster(name:str):
     return {
         "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster", 
         "name": name, 
@@ -54,21 +55,27 @@ def endpoint(name:str, addr: str, port: int):
 def clusters(services):
     ret = []
     for service in services:
-        if service["type"] != "service":
+        if service.get("type") != "service":
             continue
         backend = service["backend"]
         ret.append(
-            cluster(service["name"] + "-cluster", backend["addr"], backend["port"]) #CHANGE THIS!!
+            cluster(service["name"] + "-cluster") 
         )
     return ret
 
 
-def endpoints(services):
+def endpoints(services, resource_names=None):
     ret = []
     for service in services:
-        if service["type"] != "service":
+        if service.get("type") != "service":
             continue
+
         backend = service["backend"]
+        cluster_name = service["name"] + "-cluster"
+
+        if resource_names and cluster_name not in resource_names:
+            continue
+        
         ret.append(
             endpoint(service["name"] + "-cluster", backend["addr"], backend["port"])
         )
@@ -78,7 +85,7 @@ def endpoints(services):
 def route_config(services):
     virtual_hosts = []
     for service in services:
-        if service["type"] != "service":
+        if service.get("type") != "service":
             continue
         routes = []
         for index, route in enumerate(service["routes"]):
@@ -118,6 +125,19 @@ def listener(name: str, port: int, route_config_name: str, controlplane: str):
                         "typed_config": {       
                             "@type": "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager",
                             "stat_prefix": "backends",
+                            "access_log": [
+                                {
+                                    "name": "envoy.access.stdout",
+                                    "typed_config": {
+                                        "@type": "type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog",
+                                        "log_format": {
+                                            "text_format_source": {
+                                                "inline_string": "[%START_TIME%] \"%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%\" %RESPONSE_CODE% %RESPONSE_FLAGS% upstream:%UPSTREAM_HOST% cluster:%UPSTREAM_CLUSTER%\n"
+                                            }
+                                        }
+                                    }
+                                }
+                            ],
                             "http_filters": [
                                 {
                                     "name": "routing", 
@@ -144,29 +164,42 @@ def listener(name: str, port: int, route_config_name: str, controlplane: str):
     }
 
 
+def resolve_addr(addr: str) -> str:
+    try:
+        return socket.gethostbyname(addr)
+    except socket.gaierror:
+        return addr
+
+
 def fetch_loop():   # Data File Version Control 
     global DATA
     global VERSION
     while True:
         try:
             new_data = fetch_external_data()
+            for service in new_data:
+                if service.get("type") == "service":
+                    service["backend"]["addr"] = resolve_addr(service["backend"]["addr"])
             if new_data == DATA:
                 continue
             else:
                 DATA = new_data
                 VERSION += 1
                 print(f"New data detected, version:{VERSION}")
+
         except Exception as e:
             print(f"fetch_loop error: {e}")
             continue
-        time.sleep(3)
+
+        finally:
+            time.sleep(3)
 
 
-def fetch_external_data():      # Current Data that Envoy deals with in JSON format
-    return json.loads(Path("data.json").read_text())
+def fetch_external_data():      # Instruction file on how to respond to requests by envoy
+    return json.loads(Path("data.json").read_text())            
 
 
-@app.get("/greeting")           # For testing the connection (else, useless!)
+@app.get("/greeting")           # For testing the connection (else, useless)
 def greet(name: str = "World") -> str:
     return f"Hello, {name}! "
 
@@ -175,6 +208,7 @@ def greet(name: str = "World") -> str:
 async def resources(request: Request, resource_type: str, host = Header()):
     request_json = await request.json()
     client_version = request_json.get("version_info", "unset")
+    resource_names = request_json.get("resource_names", [])
 
     resource_mapping = {
         "clusters": clusters(DATA),
@@ -184,7 +218,7 @@ async def resources(request: Request, resource_type: str, host = Header()):
             for resource in DATA
             if resource["type"] == "listener"
         ],
-        "endpoints": endpoints(DATA)
+        "endpoints": endpoints(DATA, resource_names)
     }
 
     try:
@@ -201,4 +235,4 @@ async def resources(request: Request, resource_type: str, host = Header()):
 
 if __name__ == "__main__":
     fetcher = threading.Thread(target=fetch_loop).start()
-    uvicorn.run(app, port=8050)
+    uvicorn.run(app, host="0.0.0.0", port=8050)
