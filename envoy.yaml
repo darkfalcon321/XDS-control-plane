@@ -1,3 +1,5 @@
+# This file is run at initial stage only 
+
 node:
   cluster: test-cluster
   id: test-id
@@ -16,10 +18,10 @@ dynamic_resources:
       cluster_names: [controlplane]
       refresh_delay: 5s
       
-
-static_resources:
+# Initial setup to reach to the controlplane after which req is sent to cp via xDS reqs
+static_resources: 
   clusters:
-  - type: STATIC
+  - type: STRICT_DNS
     name: controlplane
     load_assignment:
       cluster_name: controlplane
@@ -28,11 +30,11 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: 127.0.0.1  
+                address: controlplane
                 port_value: 8050
 
 admin:
   address:
     socket_address:
-      address: 0.0.0.0
+      address: 0.0.0.0  # NEED TO CHANGE IN PROD
       port_value: 9000

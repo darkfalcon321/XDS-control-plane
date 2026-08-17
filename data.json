@@ -7,10 +7,10 @@
     },
     {
         "type": "service",
-        "name": "example",
+        "name": "example",  
         "backend": {
-            "addr": "127.0.0.1",
-            "port": 8050
+            "addr": "controlplane",
+            "port": 8050    
         },
         "routes": [
             {
@@ -18,8 +18,39 @@
             }
         ],
         "domains": [
-            "foo.bar.tld",
-            "baz.bar.tld"
+            "foo.bar.tld"
+        ]
+    },
+    {
+        "type": "service",
+        "name": "whoami-service",
+        "backend": {
+            "addr": "backend1",
+            "port": 80
+        },
+        "routes": [
+            {
+                "match": {"prefix": "/"}
+            }
+        ],
+        "domains": [
+            "whoami1.local"
+        ]
+    },
+    {
+        "type": "service",
+        "name": "whoami-service2",
+        "backend": {
+            "addr": "backend2",
+            "port": 80
+        },
+        "routes": [  
+            {
+                "match": {"prefix": "/"}
+            }
+        ],
+        "domains": [
+            "whoami2.local"
         ]
     }
 ]

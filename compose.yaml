@@ -1,0 +1,50 @@
+name: 'Backends'
+
+networks:
+  envoy-net:
+    external: true
+
+services:
+  # Backend Server 1
+  backend1:
+    image: traefik/whoami
+    networks:
+      - envoy-net
+    ports:
+      - "8051:80"  
+
+  # Backend Server 2
+  backend2:
+    image: traefik/whoami
+    networks:
+      - envoy-net
+    ports:
+      - "8052:80"  
+
+  # Control Plane
+  controlplane:
+    build: .
+    ports:
+      - "8050:8050"
+    networks:
+      - envoy-net
+    volumes:
+      - ./:/controlplane
+    
+
+
+  # Envoy Proxy
+  envoy:
+    image: envoyproxy/envoy:v1.39.0
+    ports:
+      - "10000:8082"
+      - "9000:9000"
+    # stdin_open: true    # Equivalent to docker run -i
+    # tty: true           # Equivalent to docker run -t
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+    # command: bash
+    networks:
+      - envoy-net
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
